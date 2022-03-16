@@ -1,0 +1,108 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager NavigationManager
+@implements IAsyncDisposable
+
+<PageTitle>Index</PageTitle>
+
+<div class="form-group">
+    <label>
+        User:
+        <input @bind="userInput" />
+    </label>
+</div>
+<button @onclick="JoinWaitRoom" disabled="@(!IsConnected)">Join</button>
+<p role="status">Current count: @currentCount</p>
+<div class="form-group">
+    <label>
+        Message:
+        <input @bind="messageInput" size="50" />
+    </label>
+</div>
+<button @onclick="Send" disabled="@(!IsConnected)">Send</button>
+
+<hr>
+
+<ul id="messagesList">
+    @foreach (var message in messages)
+    {
+        <li>@message</li>
+    }
+</ul>
+
+@code {
+    private int currentCount = 0;
+    private HubConnection? hubConnection;
+    private List<string> messages = new List<string>();
+    private string? userInput;
+    private string? messageInput;
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        hubConnection = new HubConnectionBuilder()
+        .WithUrl(NavigationManager.ToAbsoluteUri("/lobbyhub"), (opts) =>
+        {
+            opts.HttpMessageHandlerFactory = (message) =>
+    {
+
+    if (message is HttpClientHandler clientHandler)
+        clientHandler.ServerCertificateCustomValidationCallback += (sender, certificate, chain, sslPolicyErrors) =>
+        {
+                return true;
+            };
+    return message;
+            };
+        }).Build();
+
+        hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
+        {
+            var encodedMsg = $"{user}: {message}";
+            messages.Add(encodedMsg);
+            StateHasChanged();
+        });
+        hubConnection.On<int>("CountOnline", (count) =>
+        {
+            currentCount = count;
+            StateHasChanged();
+        });
+        hubConnection.On<string>("Alert", (str) => {
+            StateHasChanged();
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    private async Task Send()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("SendMessage", userInput, messageInput);
+        }
+    }
+
+    private async Task JoinWaitRoom()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("JoinWaitingRoom", "WaitRoom", userInput);
+        }
+    }
+
+    public bool IsConnected =>
+    hubConnection?.State == HubConnectionState.Connected;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+
+    private List<string> GetMessages()
+    {
+        List<string> messages = new List<string>();
+        return messages;
+    }
+}
