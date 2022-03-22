@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using System.Text;
+using Newtonsoft.Json;
+
 
 class Room
 {
@@ -148,10 +150,6 @@ static class RoomManager
     {
         return waitingRoom.AddUser(userName, userId);
     }
-
-
-
-
 }
 
 class UniquenessError
@@ -168,18 +166,71 @@ class UniquenessError
 [Serializable]
 class GameSituation
 {
-    // private string turnUserName;
-    // private List<string> lst = new List<string>();
-    public string TurnUserName { get; set; }
-    public List<string> Lst { get; set; }
+    public string? TurnUserName { get; set; }
+    public List<string>? Lst { get; set; }
     public bool Finished { get; set; }
-    public string message { get; set; }
+    public string? message { get; set; }
 
+}
+
+[Serializable]
+class GameSession
+{
+    public string? GameId { get; set; }
+    public List<GameSituation>? Turns { get; set; }
+}
+
+static class GameSessionWriter
+{
+    public static List<GameSession>? gSList;
+    public static void writeSession(GameSession gameSession)
+    {
+        string dirPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        dirPath = Path.Combine(dirPath, "БС подготов очка", "csharp", "tictactoe", "tictactoe");
+        string fileName = "sessions.json";
+
+        string filePath = Path.Combine(dirPath, fileName);
+
+        string text = File.ReadAllText(filePath);
+        gSList = JsonConvert.DeserializeObject<List<GameSession>>(text);
+        if (gSList == null)
+        {
+            gSList = new List<GameSession>();
+        }
+        GameSession? foundGS = gSList?.Find(gS => gS.GameId == gameSession.GameId);
+        if (foundGS == null)
+        {
+            gSList?.Add(gameSession);
+        }
+        else
+        {
+            foundGS.Turns = gameSession.Turns;
+        }
+
+        text = JsonConvert.SerializeObject(gSList);
+        Console.WriteLine(text);
+
+        Task asyncTask = WriteFileAsync(dirPath, fileName, text);
+        Console.WriteLine(dirPath);
+        Console.WriteLine(fileName);
+
+    }
+
+    static async Task WriteFileAsync(string dir, string file, string content)
+    {
+        Console.WriteLine("Async Write File has started.");
+        using (StreamWriter outputFile = new StreamWriter(Path.Combine(dir, file), append: false))
+        {
+            await outputFile.WriteAsync(content);
+        }
+        Console.WriteLine("Async Write File has completed.");
+    }
 }
 
 class Game
 {
     public User? firstTurnUser;
+    public GameSession gameSession = new GameSession();
     public User? secondTurnUser;
     private List<int> lst = new List<int>();
     public List<int> Lst { get { return lst; } }
@@ -193,17 +244,23 @@ class Game
     public GameSituation MakeTurn(int cellNum, string userId)
     {
         lst[cellNum] = userId == firstTurnUser?.UserId ? 1 : -1;
-        return new GameSituation
+        bool finished = IsWin();
+        GameSituation gameSituation = new GameSituation
         {
             Lst = Game.convertSituationList(lst),
             TurnUserName = userId == firstTurnUser?.UserId ? secondTurnUser!.UserName : firstTurnUser!.UserName,
-            Finished = IsWin(),
-            message = GetMessage(userId)
+            Finished = finished,
+            message = GetMessage(userId, finished)
         };
+
+        gameSession.Turns?.Add(gameSituation);
+        GameSessionWriter.writeSession(gameSession);
+
+        return gameSituation;
     }
-    public string GetMessage(string userId)
+    public string GetMessage(string userId, bool finished)
     {
-        string message = IsWin() ? (userId == firstTurnUser!.UserId ? firstTurnUser!.UserName : secondTurnUser!.UserName) : null;
+        string? message = finished ? (userId == firstTurnUser!.UserId ? firstTurnUser!.UserName : secondTurnUser!.UserName) : null;
         if (message == null)
         {
             for (int i = 0; i < 9; i++)
@@ -223,6 +280,9 @@ class Game
     {
         firstTurnUser = first;
         secondTurnUser = second;
+        gameSession.GameId = DateTime.Now.ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ss") +
+        Environment.NewLine + first.UserName + " VS " + second.UserName;
+        gameSession.Turns = new List<GameSituation>();
     }
     private bool IsWin()
     {
@@ -422,7 +482,7 @@ class GameRender
     {
         for (int i = 0; i < 9; ++i)
         {
-            getCell(i).Value = situation.Lst.ElementAt(i);
+            getCell(i).Value = situation!.Lst!.ElementAt(i);
         }
 
         if (situation.TurnUserName == userName)
@@ -494,5 +554,12 @@ class Logger
             await outputFile.WriteAsync(content + Environment.NewLine);
         }
         Console.WriteLine("Async Write File has completed.");
+    }
+
+    public async Task SimpleReadAsync(string filePath)
+    {
+        string text = await File.ReadAllTextAsync(filePath);
+
+        Console.WriteLine(text);
     }
 }
