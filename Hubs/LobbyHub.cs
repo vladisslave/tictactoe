@@ -28,13 +28,7 @@ namespace BlazorServerSignalRApp.Hubs
             string u1 = lobby.JoinedUserId;
             string u2 = lobby.CreatorUserId;
             GameSituation st = lobby.StartGame();
-            // Logger.writeMessage(JsonConvert.SerializeObject(st));
-            // GameSituation desSt = JsonConvert.DeserializeObject<GameSituation>(JsonConvert.SerializeObject(st));
-            // Logger.writeMessage("serial deserial");
-            // Logger.writeMessage(JsonConvert.SerializeObject(desSt));
             string gameSituationJson = JsonConvert.SerializeObject(st);
-            Logger.writeMessage(u1);
-            Logger.writeMessage(u2);
             await Clients.Client(u1).SendAsync("ReceiveSituation", gameSituationJson);
             await Clients.Client(u2).SendAsync("ReceiveSituation", gameSituationJson);
         }
@@ -47,9 +41,6 @@ namespace BlazorServerSignalRApp.Hubs
             string gameSituationJson = JsonConvert.SerializeObject(lobby.GetGame.MakeTurn(cellNum, Context.ConnectionId));
             await Clients.Client(u1).SendAsync("ReceiveSituation", gameSituationJson);
             await Clients.Client(u2).SendAsync("ReceiveSituation", gameSituationJson);
-            if (u1 == u2) {
-                Logger.writeMessage("SUPERPATAU");
-            }
         }
 
         public async Task UpdateLobbyList()
@@ -65,7 +56,6 @@ namespace BlazorServerSignalRApp.Hubs
                     lobbyIds.Add(lobby.LobbyId);
                 }
             }
-            // Console.WriteLine(lobbyList);
             await Clients.All.SendAsync("UpdateLobbyList", lobbyIds, creatorNames);
         }
         public async Task SendMessage(string user, string message)
@@ -97,17 +87,11 @@ namespace BlazorServerSignalRApp.Hubs
 
         public override Task OnConnectedAsync()
         {
-            // RoomManager.ConnectedIds.Add(Context.ConnectionId);
-            // var task = Task.Run(async () => await SendUsersCountOnline());
-            // task.Wait();
             return base.OnConnectedAsync();
         }
 
         public override Task OnDisconnectedAsync(Exception? exception)
         {
-            // RoomManager.ConnectedIds.Remove(Context.ConnectionId);
-            // var task = Task.Run(async () => await SendUsersCountOnline());
-            // task.Wait();
             RoomManager.deleteUserFromRooms(Context.ConnectionId);
             return base.OnDisconnectedAsync(exception);
         }
