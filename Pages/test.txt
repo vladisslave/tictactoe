@@ -1,11 +1,11 @@
-﻿@page "/"
+@page "/"
 @using Microsoft.AspNetCore.SignalR.Client
 @using Newtonsoft.Json;
 @inject NavigationManager NavigationManager
 @implements IAsyncDisposable
 
 <PageTitle>Index</PageTitle>
-<div class="tictac-box" hidden="@(!isInLobby)">
+@* <div class="tictac-box" hidden="@(!isInLobby)">
     <p>@testValue</p>
 
     <div>
@@ -40,10 +40,8 @@
         <button @onclick="async () => await MakeTurn(8)" class="cell-button" disabled="@(gR.getCell(8).IsDisabled)">
             @gR.getCell(8).Value
         </button>
-        <button @onclick="RestoreLastTurn" disabled="@(!IsConnected)">Restore Last Turn</button>
-
     </div>
-</div>
+</div> *@
 <div class="form-group" hidden="@(!IsInWaitRoom || isInLobby)">
     <select name="Turn" @bind="@selectedTurnType">
         <option value="0">Random</option>
@@ -53,7 +51,7 @@
     <button @onclick="CreateLobby" disabled="@(!IsConnected)">Create Lobby</button>
 
 </div>
-<div hidden="@(!IsInWaitRoom || isInLobby)">
+@* <div hidden="@(!IsInWaitRoom || isInLobby)">
     @foreach (var lobby in lobbyList)
     {
         <div class="lobby-elem">
@@ -61,7 +59,7 @@
             <button class="join-button" @onclick="()=>JoinLobby(lobby.id)" disabled="@(!IsConnected)">Join Lobby</button>
         </div>
     }
-</div>
+</div> *@
 <div class="form-group" hidden="@IsInWaitRoom">
     <label>
         User:
@@ -70,14 +68,14 @@
     <button @onclick="JoinWaitRoom" disabled="@(!IsConnected)">Join</button>
 </div>
 <p hidden="@IsUserNameUnique">User with this name already exists</p>
-<p role="status">Current count: @currentCount</p>
-<div class="form-group">
+@* <p role="status">Current count: @currentCount</p>
+    <div class="form-group">
     <label>
-        Message:
-        <input @bind="messageInput" size="50" />
+    Message:
+    <input @bind="messageInput" size="50" />
     </label>
-</div>
-<button @onclick="Send" disabled="@(!IsConnected)">Send</button>
+    </div>
+    <button @onclick="Send" disabled="@(!IsConnected)">Send</button> *@
 
 <hr>
 
@@ -87,10 +85,11 @@
         <li>@message</li>
     }
 </ul>
+
 @code {
     public string testValue = "Waiting for a player to join";
     private string selectedTurnType = "0";
-    private GameRender gR = new GameRender("Default UserName");
+    @* private GameRender gR = new GameRender("Default UserName"); *@
     string SelectedTurnType
     {
         get => selectedTurnType;
@@ -103,9 +102,10 @@
 
 
     private int currentCount = 0;
+    private int lobbyId;
     private HubConnection? hubConnection;
     private List<string> messages = new List<string>();
-    private List<LobbyIdAndName> lobbyList = new List<LobbyIdAndName>();
+    @* private List<LobbyIdAndName> lobbyList = new List<LobbyIdAndName>(); *@
     private string userInput = "";
     private bool IsUserNameUnique = true;
     private bool IsInWaitRoom = false;
@@ -114,9 +114,21 @@
 
     protected override async Task OnInitializedAsync()
     {
+
         hubConnection = new HubConnectionBuilder()
-        .WithUrl(NavigationManager.ToAbsoluteUri("/gamehub"))
-        .Build();
+        .WithUrl(NavigationManager.ToAbsoluteUri("/gamehub"), (opts) =>
+        {
+            opts.HttpMessageHandlerFactory = (message) =>
+    {
+
+    @* if (message is HttpClientHandler clientHandler)
+        clientHandler.ServerCertificateCustomValidationCallback += (sender, certificate, chain, sslPolicyErrors) =>
+        {
+                return true;
+            }; *@
+    return message;
+            };
+        }).Build();
 
         hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
         {
@@ -124,27 +136,34 @@
             messages.Add(encodedMsg);
             StateHasChanged();
         });
-
-        hubConnection.On<ErrorMessage>("ReceiveErrorMessage", (errorMessage) =>
+        hubConnection.On<int>("CountOnline", (count) =>
         {
-            if (errorMessage == ErrorMessage.UserNameIsNotUnique)
-            {
-                IsUserNameUnique = false;
-            }
+            currentCount = count;
             StateHasChanged();
         });
-
         hubConnection.On<string>("ShowWaitingRoom", async (str) =>
         {
-            gR = new GameRender(userInput);
+            @* gR = new GameRender(userInput); *@
             await UpdateLobbyList();
             isInLobby = false;
             IsUserNameUnique = true;
             IsInWaitRoom = true;
             StateHasChanged();
         });
-
-        hubConnection.On<List<string>, List<string>>("UpdateLobbyList", (ids, names) =>
+        @* hubConnection.On<UniquenessError>("UniquenessErrorHandler", (err) =>
+        {
+            if (err.ErrorDetails == "userName")
+            {
+                IsUserNameUnique = false;
+            }
+            StateHasChanged();
+        }); *@
+        hubConnection.On<int>("JoinedLobby", async (_lobbyId) =>
+        {
+            lobbyId = _lobbyId;
+            await UpdateLobbyList();
+        });
+        @* hubConnection.On<List<int>, List<string>>("UpdateLobbyList", (ids, names) =>
         {
             lobbyList.RemoveAll((lobby) => true);
             for (int i = 0; i < ids.Count(); ++i)
@@ -153,63 +172,32 @@
             }
             StateHasChanged();
         });
-
-        hubConnection.On<string>("JoinedLobby", async (message) =>
-        {
-            await UpdateLobbyList();
-        });
-
-        hubConnection.On<string>("ReceiveGameRenderElement", (gSJson) =>
+        hubConnection.On<string>("ReceiveSituation", (gSJson) =>
         {
             if (gSJson is not null)
             {
-                Console.WriteLine("pizdec");
-                GameRenderElement? gameRenderElement = JsonConvert.DeserializeObject<GameRenderElement>(gSJson);
-                if (gameRenderElement is not null)
+                GameSituation? gS = JsonConvert.DeserializeObject<GameSituation>(gSJson);
+                if (gS is not null)
                 {
-                    Console.WriteLine("pizdec1");
-
-                    gR.ParseSituation(gameRenderElement);
-                    if (gameRenderElement.Message != null)
+                    gR.ParseSituation(gS);
+                    if (gS.message != null)
                     {
-                        testValue = gameRenderElement.Message;
+                        testValue = gS.message;
                     }
-                    if (gameRenderElement.IsFinished == true)
+                    else {
+                        testValue = gS.TurnUserName + "`s turn!";
+                    }
+                    if (gS.Finished == true)
                     {
+                        testValue = gS.message + " has won!";
                         gR.DisableAllCells();
                     }
                     StateHasChanged();
                 }
             }
-        });
-
-
+        }); *@
 
         await hubConnection.StartAsync();
-    }
-
-    private async Task JoinWaitRoom()
-    {
-        if ((hubConnection is not null) && !string.IsNullOrWhiteSpace(userInput))
-        {
-            await hubConnection.SendAsync("JoinWaitingRoom", userInput);
-        }
-    }
-
-    private async Task UpdateLobbyList()
-    {
-        if ((hubConnection is not null))
-        {
-            await hubConnection.SendAsync("UpdateLobbyList");
-        }
-    }
-
-    private async Task MakeTurn(int cellNumber)
-    {
-        if ((hubConnection is not null))
-        {
-            await hubConnection.SendAsync("MakeTurn", cellNumber);
-        }
     }
 
     private async Task Send()
@@ -220,13 +208,39 @@
         }
     }
 
-    private async Task JoinLobby(string lobbyId)
+    private async Task JoinLobby(int id)
     {
         if ((hubConnection is not null))
         {
             isInLobby = true;
-            await hubConnection.SendAsync("JoinLobby", lobbyId);
-            await hubConnection.SendAsync("StartGame");
+            await hubConnection.SendAsync("JoinLobby", id);
+            await hubConnection.SendAsync("StartGame", id);
+        }
+    }
+
+    private async Task MakeTurn(int cellNum)
+    {
+        if ((hubConnection is not null))
+        {
+            isInLobby = true;
+            await hubConnection.SendAsync("MakeTurn", cellNum, lobbyId);
+        }
+    }
+
+
+    private async Task UpdateLobbyList()
+    {
+        if ((hubConnection is not null))
+        {
+            await hubConnection.SendAsync("UpdateLobbyList");
+        }
+    }
+
+    private async Task JoinWaitRoom()
+    {
+        if ((hubConnection is not null) && !string.IsNullOrWhiteSpace(userInput))
+        {
+            await hubConnection.SendAsync("JoinWaitingRoom", "WaitRoom", userInput);
         }
     }
 
@@ -241,18 +255,10 @@
         }
     }
 
-    private async Task RestoreLastTurn()
-    {
-
-        if ((hubConnection is not null))
-        {
-            await hubConnection.SendAsync("RestoreLastTurn");
-        }
-    }
-
 
     public bool IsConnected =>
     hubConnection?.State == HubConnectionState.Connected;
+
 
     public async ValueTask DisposeAsync()
     {
@@ -260,5 +266,11 @@
         {
             await hubConnection.DisposeAsync();
         }
+    }
+
+    private List<string> GetMessages()
+    {
+        List<string> messages = new List<string>();
+        return messages;
     }
 }
