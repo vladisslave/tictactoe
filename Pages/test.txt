@@ -9,36 +9,36 @@
     <p>@testValue</p>
 
     <div>
-        <button @onclick="async () => await MakeTurn(0)" class="cell-button" disabled="@(gR.getCell(0).IsDisabled)">
-            @gR.getCell(0).Value
+        <button @onclick="async () => await MakeTurn(0)" class="cell-button" disabled="@(gR.GetCell(0).IsDisabled)">
+            @gR.GetCell(0).Value
         </button>
-        <button @onclick="async () => await MakeTurn(1)" class="cell-button" disabled="@(gR.getCell(1).IsDisabled)">
-            @gR.getCell(1).Value
+        <button @onclick="async () => await MakeTurn(1)" class="cell-button" disabled="@(gR.GetCell(1).IsDisabled)">
+            @gR.GetCell(1).Value
         </button>
-        <button @onclick="async () => await MakeTurn(2)" class="cell-button" disabled="@(gR.getCell(2).IsDisabled)">
-            @gR.getCell(2).Value
-        </button>
-    </div>
-    <div>
-        <button @onclick="async () => await MakeTurn(3)" class="cell-button" disabled="@(gR.getCell(3).IsDisabled)">
-            @gR.getCell(3).Value
-        </button>
-        <button @onclick="async () => await MakeTurn(4)" class="cell-button" disabled="@(gR.getCell(4).IsDisabled)">
-            @gR.getCell(4).Value
-        </button>
-        <button @onclick="async () => await MakeTurn(5)" class="cell-button" disabled="@(gR.getCell(5).IsDisabled)">
-            @gR.getCell(5).Value
+        <button @onclick="async () => await MakeTurn(2)" class="cell-button" disabled="@(gR.GetCell(2).IsDisabled)">
+            @gR.GetCell(2).Value
         </button>
     </div>
     <div>
-        <button @onclick="async () => await MakeTurn(6)" class="cell-button" disabled="@(gR.getCell(6).IsDisabled)">
-            @gR.getCell(6).Value
+        <button @onclick="async () => await MakeTurn(3)" class="cell-button" disabled="@(gR.GetCell(3).IsDisabled)">
+            @gR.GetCell(3).Value
         </button>
-        <button @onclick="async () => await MakeTurn(7)" class="cell-button" disabled="@(gR.getCell(7).IsDisabled)">
-            @gR.getCell(7).Value
+        <button @onclick="async () => await MakeTurn(4)" class="cell-button" disabled="@(gR.GetCell(4).IsDisabled)">
+            @gR.GetCell(4).Value
         </button>
-        <button @onclick="async () => await MakeTurn(8)" class="cell-button" disabled="@(gR.getCell(8).IsDisabled)">
-            @gR.getCell(8).Value
+        <button @onclick="async () => await MakeTurn(5)" class="cell-button" disabled="@(gR.GetCell(5).IsDisabled)">
+            @gR.GetCell(5).Value
+        </button>
+    </div>
+    <div>
+        <button @onclick="async () => await MakeTurn(6)" class="cell-button" disabled="@(gR.GetCell(6).IsDisabled)">
+            @gR.GetCell(6).Value
+        </button>
+        <button @onclick="async () => await MakeTurn(7)" class="cell-button" disabled="@(gR.GetCell(7).IsDisabled)">
+            @gR.GetCell(7).Value
+        </button>
+        <button @onclick="async () => await MakeTurn(8)" class="cell-button" disabled="@(gR.GetCell(8).IsDisabled)">
+            @gR.GetCell(8).Value
         </button>
     </div>
 </div> *@
